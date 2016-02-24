@@ -1,0 +1,10 @@
+{
+  "PegaServer": {
+    "host" : "lnpnprcopga001v.int.asurion.com"
+  },
+  "LoggerHandler":{
+	  "logDuration":"1d",
+	  "logFileCount":3,
+	  "logServiceEndpoint":"http://localhost/loggerservice"
+  }
+}
