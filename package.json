@@ -1,0 +1,18 @@
+{
+  "name": "nodejs-notifier",
+  "version": "1.0.0",
+  "description": "Simple NodeJS Server for pushing notifications using Socket.IO",
+  "main": "nodehttpserver.v1.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Abhilash Panickar",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.14.2",
+    "collections": "^3.0.0",
+    "express": "^4.13.3",
+    "pm2": "^1.0.0",
+    "socket.io": "^1.4.4"
+  }
+}

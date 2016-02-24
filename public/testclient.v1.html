@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="us">
+   <head>
+      <meta charset="utf-8">
+      <title>Node.js Notifier Test Client</title>
+      <link href="jquery-ui.css" rel="stylesheet">
+   </head>
+   <body bgcolor="#FFFBF7">
+
+      <h1>Test client for Node.JS Notification Server</h1>
+      <div class="ui-widget">
+         <p>This page demonstrates real-time web capabilities using Socket.IO and Node.JS to push events from Server to the client using a low latency connection</p>
+      </div>
+
+      <h2 class="demoHeaders">Node.JS Socket.IO server connectivity status:</h2>
+      <div class="ui-widget" id = "connectivityStatus">Not Established!</div>
+      <p>&nbsp;</p>
+      <hr />
+      
+      <p>
+         <h2 class="demoHeaders">Simulate work by adding tasks to the queue:</h2>
+         <a href="#" id="dialog-link" class="ui-state-default ui-corner-all"><span class="ui-icon ui-icon-newwin"></span>Add tasks to the queue</a>
+      </p>
+
+      <h2 class="demoHeaders">Client Availability Status:</h2>
+      <select id="selectmenu">
+         <option>Available</option>
+         <option>Busy</option>
+      </select>
+
+      <!-- ui-dialog -->
+      <div id="taskdialog" title="Dialog Title">
+         <p>Select number of tasks to queue</p>
+         <div id="radioset">
+            <input type="radio" id="radio1" name="radio" style="margin-left: 10px;" value=1><label for="radio1">1</label>
+            <input type="radio" id="radio2" name="radio" checked="checked" style="margin-left: 10px;" value=5><label for="radio2">5</label>
+            <input type="radio" id="radio3" name="radio" style="margin-left: 10px;"><label for="radio3" value=10>10</label>
+         </div>
+      </div>
+
+      <h2 class="demoHeaders">Message broadcasts from server:</h2>
+      <textarea id="resizable" rows="10" cols="150"></textarea>
+      <p>&nbsp;</p>
+      <hr />
+      <p>&nbsp;</p>
+
+      <div class="ui-widget">
+         <div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em;">
+            <p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
+               <strong>Server Stats:</strong> 
+            <div id="TotalC">Total Clients Connected: 0</div>
+            <div id="TotalN">Total Notifications Processed: 0</div>
+            </p>
+         </div>
+      </div>
+
+      <!-- ui-dialog -->
+      <div id="dialog-confirm" title="New Task Notification" hidden="hidden">
+         <p>
+            <span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
+            A new task has been received, do you want to accept it?
+         </p>
+         <p>
+         <div id ="WorkItemID"></div>
+         </p>
+      </div>
+
+      <script src="jquery.js"></script>
+      <script src="jquery-ui.js"></script>
+      <!-- Server the Socket.IO client side library from the server side socket.io process -->
+      <script src="/socket.io/socket.io.js"></script>
+
+      <script>
+         var socketEndpoint = "http://192.168.1.102:3100";
+         //var socketEndpoint = "http://10.60.182.101:3000";
+         
+         var socket = io.connect(socketEndpoint);
+
+         //*****Default events******
+         this.socket.on("connect", function(){
+         
+            $("#connectivityStatus").text ("Server connection established!");
+         
+            console.log("Client: Socket connected");
+         })
+         
+         this.socket.on("disconnect", function(){
+         
+            $("#connectivityStatus").text ("Server connection lost!");
+         
+            console.log("Client: Socket disconnected")
+         })
+         
+         this.socket.on('error', function(err){
+                
+                $("#connectivityStatus").text ("Server connection error!");
+
+                console.log("*** Error connecting", err);
+         })
+
+         socket.on("reconnect_attempt", function(){
+         
+            $("#connectivityStatus").text ("Attempting to reconnect...");
+         
+            console.log("Attempting to reconnect...");
+         })
+
+         socket.on('reconnecting', function(att){
+                
+             $("#connectivityStatus").text ("Attempting to reconnect - Attempt#: " + att);
+
+             console.log("Attempting to reconnect - Attempt#:", att);
+         })
+
+         socket.on('reconnect', function(att){
+                
+             $("#connectivityStatus").text ("Server connection reestablished!");
+
+             console.log("Client: Socket re-connected after: " + att, " attempts");
+         })
+
+         socket.on('reconnect_error', function(err){
+                
+                $("#connectivityStatus").text ("Error on reconnect!");
+
+                console.log("Error reconnecting", err);
+         })
+
+         socket.on("reconnect_failed", function(){
+         
+            $("#connectivityStatus").text ("All attempts to reconnect have failed");
+         
+            console.log("All attempts to reconnect have failed");
+         })
+         //*****Default events******
+         
+                  
+         socket.on("ServerNotification", function(eventData){
+         
+            console.log(eventData);
+         
+            $("#txtNotifications").append(eventData + "\n");
+         })
+         
+         $(function () {
+         
+         	$( "#taskdialog" ).dialog({
+         		autoOpen: false,
+         		width: 400,
+         		buttons: [
+         			{
+         				text: "Ok",
+         				click: function() {
+         
+         					var numberOfTasks = $('input:radio[name=radio]:checked').val();
+         
+         					if (numberOfTasks >0){
+         
+         						for (var i = 1; i <= numberOfTasks; i++){
+         
+         							socket.emit("QueueTask", "New Task #" + i);
+         						}
+         					}
+         
+         					$( this ).dialog( "close" );
+         				}
+         			},
+         			{
+         				text: "Cancel",
+         				click: function() {
+         					$( this ).dialog( "close" );
+         				}
+         			}
+         		]
+         	});
+         
+         	// Link to open the dialog
+         	$( "#dialog-link" ).click(function( event ) {
+         		$( "#taskdialog" ).dialog( "open" );
+         		event.preventDefault();
+         	});
+         
+         	$( "#selectmenu" ).selectmenu({
+         
+         		 change: function( event, ui ) { 
+         
+         			socket.emit("AgentStatusNotification", $("#selectmenu").val());
+         		}
+         	});
+         
+         	// Hover states on the static widgets
+         	$( "#dialog-link, #icons li" ).hover(
+         		function() {
+         			$( this ).addClass( "ui-state-hover" );
+         		},
+         		function() {
+         			$( this ).removeClass( "ui-state-hover" );
+         		}
+         	);
+         
+            /*
+             window.setInterval(function(){
+         
+             	$.ajax({
+         	        url: socketEndpoint + "/api/Socket"
+         	    }).then(function(data) {
+         	       $("#TotalC").text("Total Clients Connected: " + data.totalConnectedSocks);
+         	       $("#TotalN").text("Total Notifications Processed: " + data.workItemsProcessed);
+         	    }, function(data){
+
+                  $("#TotalC").text("Error");
+                });
+             	
+             }, 1000);
+            */
+         
+         });
+      </script>
+   </body>
+</html>

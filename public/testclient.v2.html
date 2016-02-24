@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="us">
+   <head>
+      <meta charset="utf-8">
+      <title>Node.js Notifier Test Client</title>
+      <link href="jquery-ui.css" rel="stylesheet">
+   </head>
+   <body bgcolor="#FFFBF7">
+
+      <h1>Test client for Node.JS Notification Server</h1>
+      <div class="ui-widget">
+         <p>This page demonstrates real-time web capabilities using Socket.IO and Node.JS to push events from Server to the client using a low latency connection</p>
+      </div>
+
+      <h2 class="demoHeaders">Node.JS Socket.IO server connectivity status:</h2>
+      <div class="ui-widget" id = "connectivityStatus">Not Established!</div>
+      <p>&nbsp;</p>
+      <hr />
+      
+      <p>
+         <h2 class="demoHeaders">Simulate work by adding tasks to the queue:</h2>
+         <a href="#" id="dialog-link" class="ui-state-default ui-corner-all"><span class="ui-icon ui-icon-newwin"></span>Add tasks to the queue</a>
+      </p>
+
+      <h2 class="demoHeaders">Client Availability Status:</h2>
+      <select id="selectmenu">
+         <option>Available</option>
+         <option>Busy</option>
+      </select>
+
+      <!-- ui-dialog -->
+      <div id="taskdialog" title="Dialog Title">
+         <p>Select number of tasks to queue</p>
+         <div id="radioset">
+            <input type="radio" id="radio1" name="radio" style="margin-left: 10px;" value=1><label for="radio1">1</label>
+            <input type="radio" id="radio2" name="radio" checked="checked" style="margin-left: 10px;" value=5><label for="radio2">5</label>
+            <input type="radio" id="radio3" name="radio" style="margin-left: 10px;"><label for="radio3" value=10>10</label>
+         </div>
+      </div>
+
+      <h2 class="demoHeaders">Message broadcasts from server:</h2>
+      <textarea id="resizable" rows="10" cols="150"></textarea>
+      <p>&nbsp;</p>
+      <hr />
+      <p>&nbsp;</p>
+
+      <div class="ui-widget">
+         <div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em;">
+            <p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
+               <strong>Server Stats:</strong> 
+            <div id="TotalC">Total Clients Connected: 0</div>
+            <div id="TotalN">Total Notifications Processed: 0</div>
+            </p>
+         </div>
+      </div>
+
+      <!-- ui-dialog -->
+      <div id="dialog-confirm" title="New Task Notification" hidden="hidden">
+         <p>
+            <span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>
+            A new notification has been received from the server!
+         </p>
+         <p>
+         <div id ="WorkItemID">
+            <textarea id="txtNotificationMsg" cols="80" rows="10" readonly></textarea>
+         </div>
+         </p>
+      </div>
+
+      <script src="jquery.js"></script>
+      <script src="jquery-ui.js"></script>
+      <!-- Server the Socket.IO client side library from the server side socket.io process -->
+      <script src="/socket.io/socket.io.js"></script>
+      <script src="node.pushnotificationclient.js"></script>
+
+      <script>
+         var agentID = "mhanson@newcorp.com";
+         var agentExtension = "007";
+         var sessionID = createUUID();
+         var applicationName = "Horizon ASG Portal";
+         var clientName = "nTelos";
+         var agentStatus = "Available";
+         var accessGroup = "Horizon_NA:InstantVerification";
+         var nodeName = "lnpnprcopga001v";
+         var workstationIP = "255.255.255.0";
+
+         console.log("Session ID generated in UI: " + sessionID);
+
+         var endpoint = "http://172.20.254.85:3210"
+         //var endpoint = "http://10.60.182.83:3110";
+         //var endpoint = "http://localhost:3110"
+
+         var notificationClient = new pushNotificationClient({socketEndpoint:endpoint, 
+                                                               sessionID:sessionID,
+                                                               clientContext:{
+                                                                  clientName:clientName, 
+                                                                  agentID:agentID, 
+                                                                  agentExtension:agentExtension, 
+                                                                  applicationName:applicationName, 
+                                                                  agentStatus:agentStatus, 
+                                                                  workstationIP:workstationIP, 
+                                                                  nodeName:nodeName, 
+                                                                  accessGroup:accessGroup
+                                                               }
+                                                            });
+
+         notificationClient.connect();
+
+
+         notificationClient.connected(function () {
+
+            $("#connectivityStatus").text ("Server connection established!");
+         
+            console.log("Client: Socket connected");
+         });
+
+         notificationClient.error(function (e) {
+
+            $("#connectivityStatus").text ("Server connection error!");
+
+            console.error("**** Error connecting", e[0]);
+         });
+
+         notificationClient.disconnected(function () {
+
+            $("#connectivityStatus").text ("Server connection lost!");
+         
+            console.log("Client: Socket disconnected")
+         });
+
+         notificationClient.reconnect(function(e){
+                
+            $("#connectivityStatus").text ("Server connection reestablished!");
+
+            console.log("Client: Socket re-connected after: " + e[0], " attempts");
+         });
+         
+         notificationClient.reconnectAttempt(function(){
+         
+            $("#connectivityStatus").text ("Attempting to reconnect...");
+         
+            console.log("Attempting to reconnect...");
+         });
+
+         notificationClient.reconnecting(function(e){
+                
+             $("#connectivityStatus").text ("Attempting to reconnect - Attempt#: " + e[0]);
+
+             console.log("Attempting to reconnect - Attempt#:", e[0]);
+         });
+
+         notificationClient.reconnectError(function (e) {
+
+            $("#connectivityStatus").text ("Error on reconnect!");
+
+            console.error("Error reconnecting", e[0]);
+         });
+
+         notificationClient.reconnectFailed(function () {
+
+            $("#connectivityStatus").text ("All attempts to reconnect have failed");
+
+            console.error("All attempts to reconnect have failed");
+         });
+
+         notificationClient.notificationMessage(function (e) {
+
+            if ((typeof e != "undefined") &&
+                ($.isArray(e))){
+
+                  var msg = e[0];
+
+                  var notificationmsg = "Notification from server: \n " + "Session ID: " + msg.sessionID + " \n Notification Message Type: " 
+                                       + msg.notificationMessageType + " \n Notification Message: " + msg.notificationMessage + " \n Message Context: \n";
+
+                  $.each(msg.notificationMessageContext, function(i, item) {
+                      notificationmsg += " " + item.key + " " + item.value + "\n";
+                  });
+
+                  $("#txtNotificationMsg").val(notificationmsg);
+
+                  $( "#dialog-confirm" ).dialog({
+                        resizable: false,
+                        height:400,
+                        width:700,
+                        modal: true,
+                        buttons: {
+                          "Close": function() {
+               
+                              $( this ).dialog( "close" );
+                          }
+                        }
+                   });
+            }
+            else
+            {
+               console.error("Error reading notification message");
+            }
+         });
+
+         function createUUID() {
+             // http://www.ietf.org/rfc/rfc4122.txt
+             var s = [];
+             var hexDigits = "0123456789abcdef";
+             for (var i = 0; i < 36; i++) {
+                 s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
+             }
+             s[14] = "4";  // bits 12-15 of the time_hi_and_version field to 0010
+             s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1);  // bits 6-7 of the clock_seq_hi_and_reserved to 01
+             s[8] = s[13] = s[18] = s[23] = "-";
+
+             var uuid = s.join("");
+             return uuid;
+         }
+
+         
+         $(function () {
+         
+         	// Hover states on the static widgets
+         	$( "#dialog-link, #icons li" ).hover(
+         		function() {
+         			$( this ).addClass( "ui-state-hover" );
+         		},
+         		function() {
+         			$( this ).removeClass( "ui-state-hover" );
+         		}
+         	);
+
+            window.setInterval(function(){
+         
+               $.ajax({
+                    url: endpoint + "/api/PushNotification"
+                }).then(function(data) {
+                   $("#TotalC").text("Total Clients Connected: " + data.totalConnectedClients);
+                   $("#TotalN").text("Total Notifications Processed: " + data.notificationsPushed);
+                });
+             }, 5000);
+         });
+      </script>
+   </body>
+</html>
